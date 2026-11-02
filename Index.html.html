@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pracownia Uśmiechu</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Marcellus&display=swap">
+<style>
+/* Layout: booking flow on the left (zabieg → termin → dane → gotowe), sticky summary on the right; stacks to one column on phones. */
+:root {
+  --bg: #F1F5F3;
+  --surface: #FFFFFF;
+  --ink: #16252B;
+  --muted: #566A70;
+  --line: #D6E0DD;
+  --accent: #2D6A63;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #E0EEEB;
+  --note-bg: #F8EFD9;
+  --note-ink: #6E4A0E;
+  --danger: #A6362E;
+  --font-display: 'Marcellus', Georgia, 'Times New Roman', serif;
+  --font-body: 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1A1D;
+    --surface: #152428;
+    --ink: #E6EFED;
+    --muted: #9CB0B2;
+    --line: #28393D;
+    --accent: #6FC2B6;
+    --accent-ink: #0B1B1A;
+    --accent-soft: #1B3836;
+    --note-bg: #352B16;
+    --note-ink: #E8C47E;
+    --danger: #F09088;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1A1D;
+  --surface: #152428;
+  --ink: #E6EFED;
+  --muted: #9CB0B2;
+  --line: #28393D;
+  --accent: #6FC2B6;
+  --accent-ink: #0B1B1A;
+  --accent-soft: #1B3836;
+  --note-bg: #352B16;
+  --note-ink: #E8C47E;
+  --danger: #F09088;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 400; margin: 0; text-wrap: balance; }
+
+.page { max-width: 1040px; margin: 0 auto; display: grid; gap: 20px; }
+
+.top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px 32px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.brand h1 { font-size: clamp(1.9rem, 5vw, 2.6rem); line-height: 1.1; letter-spacing: 0.01em; }
+.brand p { margin: 4px 0 0; color: var(--muted); font-size: 0.95rem; }
+.hours { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; font-size: 0.9rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hours b { color: var(--ink); font-weight: 600; }
+
+.demo { margin: 0; padding: 10px 14px; border-radius: 10px; background: var(--note-bg); color: var(--note-ink); font-size: 0.88rem; }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+.layout.done { grid-template-columns: minmax(0, 1fr); max-width: 680px; margin: 0 auto; width: 100%; }
+.layout.done .summary { display: none; }
+.flow { min-width: 0; display: grid; gap: 16px; }
+
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.steps li { min-width: 0; }
+.step { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 4px; background: none; border: 0; border-top: 3px solid var(--line); text-align: left; color: var(--muted); font-size: 0.85rem; font-weight: 500; min-height: 44px; }
+.step .n { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 0.75rem; font-weight: 700; background: var(--line); color: var(--muted); font-variant-numeric: tabular-nums; }
+.step .l { min-width: 0; overflow-wrap: anywhere; }
+.step.current { border-top-color: var(--accent); color: var(--ink); font-weight: 600; }
+.step.current .n { background: var(--accent); color: var(--accent-ink); }
+.step.done { border-top-color: var(--accent); color: var(--ink); }
+.step.done .n { background: var(--accent-soft); color: var(--accent); }
+.step:disabled { cursor: default; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: grid; gap: 18px; }
+.panel h2 { font-size: 1.55rem; line-height: 1.2; }
+.panel h2:focus { outline: none; }
+.lead { margin: -8px 0 0; color: var(--muted); font-size: 0.95rem; }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px; background: var(--bg); border-radius: 12px; width: fit-content; max-width: 100%; }
+.tab { border: 0; background: none; padding: 9px 16px; border-radius: 9px; font-weight: 600; font-size: 0.92rem; color: var(--muted); min-height: 44px; }
+.tab[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+
+.services { display: grid; gap: 10px; }
+.svc { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; text-align: left; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.svc:hover { border-color: var(--accent); }
+.svc[aria-checked="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.svc .nm { font-weight: 600; }
+.svc .ds { grid-column: 1; color: var(--muted); font-size: 0.9rem; }
+.svc .meta { grid-column: 2; grid-row: 1 / span 2; text-align: right; font-variant-numeric: tabular-nums; display: grid; align-content: center; gap: 2px; white-space: nowrap; }
+.svc .pr { font-weight: 700; }
+.svc .du { color: var(--muted); font-size: 0.85rem; }
+
+.notice { margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--note-bg); color: var(--note-ink); font-size: 0.9rem; }
+
+.when { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.cal-head h3 { font-size: 1.15rem; text-transform: capitalize; }
+.nav { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-size: 1.1rem; }
+.nav:disabled { opacity: 0.35; cursor: default; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.dow { text-align: center; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 4px 0; }
+.day { aspect-ratio: 1; min-height: 40px; border-radius: 10px; border: 1px solid transparent; background: var(--bg); font-variant-numeric: tabular-nums; font-weight: 500; }
+.day:disabled { background: none; color: var(--muted); opacity: 0.45; cursor: default; }
+.day:not(:disabled):hover { border-color: var(--accent); }
+.day.today { border-color: var(--line); }
+.day[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.blank { aspect-ratio: 1; min-height: 40px; }
+
+.slots-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.slots-head h3 { font-size: 1.15rem; text-transform: capitalize; }
+.slots-head span { color: var(--muted); font-size: 0.85rem; }
+.slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.slot { min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-weight: 600; font-variant-numeric: tabular-nums; }
+.slot:hover { border-color: var(--accent); }
+.slot[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.empty { margin: 0; padding: 18px; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); font-size: 0.92rem; }
+
+.form { display: grid; gap: 16px; }
+.field { display: grid; gap: 6px; }
+.field label { font-weight: 600; font-size: 0.92rem; }
+.field .opt { color: var(--muted); font-weight: 400; }
+.field input[type="text"], .field input[type="tel"], .field input[type="email"], .field textarea { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); min-height: 46px; }
+.field textarea { min-height: 88px; resize: vertical; }
+.field [aria-invalid="true"] { border-color: var(--danger); }
+.err { color: var(--danger); font-size: 0.85rem; min-height: 0; }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.consent { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; font-size: 0.9rem; color: var(--muted); }
+.consent input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--accent); }
+
+.actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; padding-top: 4px; }
+.btn { min-height: 48px; padding: 0 24px; border-radius: 12px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.btn.ghost { background: none; color: var(--ink); border-color: var(--line); font-weight: 600; }
+
+.summary { position: sticky; top: calc(16px + env(safe-area-inset-top, 0px)); background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; display: grid; gap: 14px; }
+.summary h2 { font-size: 1.2rem; }
+.rows { margin: 0; display: grid; gap: 12px; }
+.rows div { display: grid; gap: 2px; }
+.rows dt { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.rows dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+.rows dd.ph { color: var(--muted); font-weight: 400; }
+.total { display: flex; justify-content: space-between; align-items: baseline; padding-top: 12px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.total b { font-size: 1.2rem; }
+
+.ok { display: grid; gap: 14px; }
+.ok .code { display: inline-block; width: fit-content; padding: 6px 12px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-weight: 700; letter-spacing: 0.08em; font-variant-numeric: tabular-nums; }
+.ok .rows { padding: 16px; border: 1px solid var(--line); border-radius: 12px; }
+.ok h3 { font-size: 1.05rem; }
+.ok p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+
+@media (max-width: 860px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .summary { position: static; }
+  .when { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 520px) {
+  .panel { padding: 16px; }
+  .step .l { display: none; }
+  .step.current .l { display: block; }
+  .steps { grid-template-columns: repeat(4, minmax(0, auto)); justify-content: space-between; }
+  .step.current { flex: 1; }
+  .two { grid-template-columns: minmax(0, 1fr); }
+  .svc { grid-template-columns: minmax(0, 1fr); }
+  .svc .meta { grid-column: 1; grid-row: auto; text-align: left; display: flex; gap: 12px; align-items: baseline; }
+  .actions .btn { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <div class="brand">
+      <h1>Pracownia Uśmiechu</h1>
+      <p>Stomatologia i medycyna estetyczna</p>
+    </div>
+    <ul class="hours" aria-label="Godziny otwarcia">
+      <li><b>Pn–Pt</b> 8:00–19:00</li>
+      <li><b>Sobota</b> 9:00–14:00</li>
+      <li>ul. Przykładowa 12, Warszawa</li>
+    </ul>
+  </header>
+
+  <p class="demo">Przykładowa strona rezerwacji. Wybrane terminy nie są wysyłane do gabinetu, a zajęte godziny są wygenerowane na potrzeby pokazu.</p>
+
+  <main class="layout" id="layout">
+    <section class="flow">
+      <ol class="steps" id="steps" aria-label="Postęp rezerwacji"></ol>
+      <div class="panel" id="panel"></div>
+    </section>
+    <aside class="summary" id="summary" aria-label="Podsumowanie wizyty"></aside>
+  </main>
+</div>
+
+<script>
+(function () {
+  var SERVICES = [
+    { id: 'l0', cat: 'lec', name: 'Konsultacja z planem leczenia', desc: 'Badanie jamy ustnej, ocena stanu zębów i kolejne kroki.', dur: 30, price: 150, from: false, prep: 'Zabierz zdjęcie pantomograficzne, jeśli je masz, oraz listę przyjmowanych leków.' },
+    { id: 'l1', cat: 'lec', name: 'Leczenie próchnicy', desc: 'Usunięcie ubytku i wypełnienie kompozytem w kolorze zęba.', dur: 60, price: 300, from: true, prep: 'Zjedz posiłek przed wizytą. Po znieczuleniu poczekaj z jedzeniem 2–3 godziny.' },
+    { id: 'l2', cat: 'lec', name: 'Leczenie kanałowe pod mikroskopem', desc: 'Precyzyjne oczyszczenie i szczelne wypełnienie kanałów.', dur: 90, price: 900, from: true, prep: 'Zjedz posiłek przed wizytą i przyjmij leki, które bierzesz na stałe.' },
+    { id: 'l3', cat: 'lec', name: 'Skaling i piaskowanie', desc: 'Usunięcie kamienia i osadu, polerowanie, fluoryzacja.', dur: 60, price: 280, from: false, prep: 'Przez 2 dni po zabiegu unikaj kawy, herbaty i czerwonego wina.' },
+    { id: 'l4', cat: 'lec', name: 'Usunięcie zęba', desc: 'Ekstrakcja w znieczuleniu miejscowym, z zaleceniami po zabiegu.', dur: 45, price: 250, from: true, prep: 'Zjedz posiłek przed wizytą. Po zabiegu nie płucz ust przez dobę.' },
+    { id: 'l5', cat: 'lec', name: 'Wizyta kontrolna dziecka', desc: 'Przegląd zębów mlecznych, lakowanie, nauka szczotkowania.', dur: 30, price: 120, from: false, prep: 'Dziecko przychodzi z rodzicem lub opiekunem prawnym.' },
+    { id: 'e1', cat: 'est', name: 'Wybielanie gabinetowe', desc: 'Rozjaśnienie zębów o kilka odcieni w jednej wizycie.', dur: 90, price: 900, from: false, prep: 'Wcześniej zrób higienizację. Przez 48 godzin po zabiegu unikaj barwiących napojów.' },
+    { id: 'e2', cat: 'est', name: 'Bonding estetyczny', desc: 'Korekta kształtu i koloru zęba kompozytem, bez szlifowania.', dur: 60, price: 500, from: true, prep: 'Zabierz zdjęcie, na którym podoba Ci się swój uśmiech.' },
+    { id: 'e3', cat: 'est', name: 'Korona ceramiczna: przygotowanie', desc: 'Opracowanie zęba, wycisk cyfrowy i korona tymczasowa.', dur: 90, price: 1800, from: true, prep: 'Zjedz posiłek przed wizytą. Po znieczuleniu poczekaj z jedzeniem 2–3 godziny.' },
+    { id: 'e4', cat: 'est', name: 'Konsultacja ortodontyczna', desc: 'Ocena zgryzu, wybór aparatu stałego lub nakładek.', dur: 45, price: 200, from: false, prep: 'Zabierz zdjęcia RTG i dokumentację z wcześniejszego leczenia, jeśli ją masz.' },
+    { id: 'e5', cat: 'est', name: 'Konsultacja implantologiczna', desc: 'Ocena tomografii, kości i plan uzupełnienia brakujących zębów.', dur: 45, price: 250, from: false, prep: 'Zabierz tomografię CBCT, jeśli ją masz, oraz listę przyjmowanych leków.' },
+    { id: 'm0', cat: 'med', name: 'Konsultacja kwalifikacyjna', desc: 'Rozmowa z lekarzem, ocena skóry i plan zabiegów.', dur: 30, price: 100, from: false, prep: 'Zabierz listę przyjmowanych leków oraz wyniki badań, jeśli je masz.' },
+    { id: 'm1', cat: 'med', name: 'Modelowanie ust kwasem hialuronowym', desc: 'Nawilżenie, kontur i subtelne zwiększenie objętości.', dur: 60, price: 900, from: true, prep: 'Zalecenia przed zabiegiem poda lekarz podczas konsultacji.' },
+    { id: 'm2', cat: 'med', name: 'Toksyna botulinowa: zmarszczki mimiczne', desc: 'Redukcja zmarszczek czoła i okolic oczu.', dur: 45, price: 800, from: true, prep: 'Zalecenia przed zabiegiem poda lekarz podczas konsultacji.' },
+    { id: 'm5', cat: 'med', name: 'Toksyna botulinowa: bruksizm', desc: 'Rozluźnienie mięśni żwaczy przy zaciskaniu i zgrzytaniu zębami.', dur: 45, price: 700, from: true, prep: 'Zalecenia przed zabiegiem poda lekarz podczas konsultacji.' },
+    { id: 'm3', cat: 'med', name: 'Osocze bogatopłytkowe', desc: 'Odbudowa skóry z własnych czynników wzrostu.', dur: 60, price: 600, from: false, prep: 'Wypij dużo wody i zjedz lekki posiłek przed wizytą.' },
+    { id: 'm4', cat: 'med', name: 'Nici liftingujące', desc: 'Delikatne uniesienie tkanek i poprawa owalu twarzy.', dur: 90, price: 1500, from: true, prep: 'Zalecenia przed zabiegiem poda lekarz podczas konsultacji.' }
+  ];
+  var CATS = { lec: 'Stomatologia', est: 'Estetyka uśmiechu', med: 'Medycyna estetyczna' };
+  var STEP_LABELS = ['Wizyta', 'Termin', 'Twoje dane', 'Gotowe'];
+
+  var $ = function (s) { return document.querySelector(s); };
+  var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var pad = function (n) { return String(n).padStart(2, '0'); };
+  var fmtT = function (m) { return pad(Math.floor(m / 60)) + ':' + pad(m % 60); };
+  var key = function (d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+  var now = new Date();
+  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var maxDate = new Date(today); maxDate.setDate(maxDate.getDate() + 60);
+  var money = function (s) { return (s.from ? 'od ' : '') + s.price + ' zł'; };
+  var dayLong = function (d) { return d.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' }); };
+  var byId = function (id) { return SERVICES.filter(function (s) { return s.id === id; })[0] || null; };
+
+  function hours(d) {
+    var w = d.getDay();
+    if (w === 0) return null;
+    return w === 6 ? [540, 840] : [480, 1140];
+  }
+  function hash(s) {
+    var h = 2166136261;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  }
+  var booked = new Set();
+  try { booked = new Set(JSON.parse(localStorage.getItem('pu-booked') || '[]')); } catch (e) {}
+  function saveBooked() { try { localStorage.setItem('pu-booked', JSON.stringify(Array.from(booked))); } catch (e) {} }
+  function isBusy(d, m) { var k = key(d) + ':' + m; return booked.has(k) || hash(k) % 100 < 32; }
+  function slotsFor(d, dur) {
+    var h = hours(d); if (!h) return [];
+    var out = [], nowMin = now.getHours() * 60 + now.getMinutes();
+    for (var s = h[0]; s + dur <= h[1]; s += 30) {
+      if (key(d) === key(today) && s < nowMin + 60) continue;
+      var ok = true;
+      for (var t = s; t < s + dur; t += 30) { if (isBusy(d, t)) { ok = false; break; } }
+      if (ok) out.push(s);
+    }
+    return out;
+  }
+
+  var state = {
+    cat: 'lec', service: null, date: null, time: null, step: 1,
+    month: new Date(today.getFullYear(), today.getMonth(), 1),
+    form: { name: '', phone: '', email: '', note: '', consent: false },
+    errors: {}, ref: null, copied: false
+  };
+
+  function renderSteps() {
+    $('#steps').innerHTML = STEP_LABELS.map(function (l, i) {
+      var n = i + 1, cls = n === state.step ? 'current' : (n < state.step ? 'done' : '');
+      var canGo = n < state.step && state.step < 4;
+      return '<li><button class="step ' + cls + '" ' + (canGo ? 'data-act="goto" data-step="' + n + '"' : 'disabled') + (n === state.step ? ' aria-current="step"' : '') + '><span class="n">' + (n < state.step ? '✓' : n) + '</span><span class="l">' + l + '</span></button></li>';
+    }).join('');
+  }
+
+  function notice() {
+    if (state.service === 'l0' || state.service === 'm0') return '';
+    if (state.cat === 'med') return '<p class="notice">Zabiegi medycyny estetycznej wykonuje lekarz po konsultacji kwalifikacyjnej. Jeśli jesteś u nas pierwszy raz, zacznij od niej.</p>';
+    return '<p class="notice">Pierwsza wizyta u nas? Zacznij od konsultacji z planem leczenia. Lekarz zaplanuje kolejne zabiegi i poda ich koszt.</p>';
+  }
+
+  function panel1() {
+    var list = SERVICES.filter(function (s) { return s.cat === state.cat; }).map(function (s) {
+      return '<button class="svc" role="radio" aria-checked="' + (state.service === s.id) + '" data-act="service" data-id="' + s.id + '">' +
+        '<span class="nm">' + esc(s.name) + '</span><span class="ds">' + esc(s.desc) + '</span>' +
+        '<span class="meta"><span class="pr">' + money(s) + '</span><span class="du">' + s.dur + ' min</span></span></button>';
+    }).join('');
+    return '<h2 tabindex="-1" id="ph">Wybierz rodzaj wizyty</h2>' +
+      '<div class="tabs" role="tablist">' + Object.keys(CATS).map(function (c) {
+        return '<button class="tab" role="tab" aria-selected="' + (state.cat === c) + '" data-act="cat" data-cat="' + c + '">' + CATS[c] + '</button>';
+      }).join('') + '</div>' + notice() +
+      '<div class="services" role="radiogroup" aria-label="Rodzaje wizyt">' + list + '</div>' +
+      '<div class="actions"><span></span><button class="btn" data-act="next"' + (state.service ? '' : ' disabled') + '>Dalej</button></div>';
+  }
+
+  function calHTML(dur) {
+    var m = state.month, y = m.getFullYear(), mo = m.getMonth();
+    var offset = (new Date(y, mo, 1).getDay() + 6) % 7;
+    var days = new Date(y, mo + 1, 0).getDate();
+    var prevOff = m <= new Date(today.getFullYear(), today.getMonth(), 1);
+    var nextOff = new Date(y, mo + 1, 1) > maxDate;
+    var html = '<div class="cal-head"><button class="nav" data-act="prev" aria-label="Poprzedni miesiąc"' + (prevOff ? ' disabled' : '') + '>‹</button>' +
+      '<h3>' + m.toLocaleDateString('pl-PL', { month: 'long', year: 'numeric' }) + '</h3>' +
+      '<button class="nav" data-act="nextm" aria-label="Następny miesiąc"' + (nextOff ? ' disabled' : '') + '>›</button></div><div class="cal">';
+    ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'].forEach(function (w) { html += '<div class="dow">' + w + '</div>'; });
+    for (var b = 0; b < offset; b++) html += '<div class="blank"></div>';
+    for (var i = 1; i <= days; i++) {
+      var d = new Date(y, mo, i);
+      var avail = d >= today && d <= maxDate && slotsFor(d, dur).length > 0;
+      var k = key(d);
+      html += '<button class="day' + (k === key(today) ? ' today' : '') + '" data-act="day" data-key="' + k + '" aria-pressed="' + (state.date === k) + '" aria-label="' + dayLong(d) + (avail ? '' : ', brak wolnych terminów') + '"' + (avail ? '' : ' disabled') + '>' + i + '</button>';
+    }
+    return html + '</div>';
+  }
+
+  function slotsHTML(dur) {
+    if (!state.date) return '<h3 class="slots-head">Godziny</h3><p class="empty">Wybierz dzień w kalendarzu, aby zobaczyć wolne godziny.</p>';
+    var p = state.date.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]);
+    var sl = slotsFor(d, dur);
+    return '<div class="slots-head"><h3>' + dayLong(d) + '</h3><span>wolnych: ' + sl.length + '</span></div><div class="slots">' +
+      sl.map(function (s) { return '<button class="slot" data-act="time" data-min="' + s + '" aria-pressed="' + (state.time === s) + '">' + fmtT(s) + '</button>'; }).join('') + '</div>';
+  }
+
+  function panel2() {
+    var s = byId(state.service);
+    return '<h2 tabindex="-1" id="ph">Wybierz termin</h2><p class="lead">Wizyta potrwa ' + s.dur + ' minut. Pokazujemy tylko godziny, w których zmieścisz się w całości.</p>' +
+      '<div class="when"><div id="cal">' + calHTML(s.dur) + '</div><div id="slots">' + slotsHTML(s.dur) + '</div></div>' +
+      '<div class="actions"><button class="btn ghost" data-act="back">Wstecz</button><button class="btn" data-act="next"' + (state.time != null ? '' : ' disabled') + '>Dalej</button></div>';
+  }
+
+  function field(id, label, type, extra) {
+    var err = state.errors[id];
+    return '<div class="field"><label for="f-' + id + '">' + label + '</label><input type="' + type + '" id="f-' + id + '" data-field="' + id + '" value="' + esc(state.form[id]) + '" ' + (extra || '') + (err ? ' aria-invalid="true" aria-describedby="e-' + id + '"' : '') + '><div class="err" id="e-' + id + '" aria-live="polite">' + (err || '') + '</div></div>';
+  }
+
+  function panel3() {
+    var f = state.form;
+    return '<h2 tabindex="-1" id="ph">Twoje dane</h2><p class="lead">Podaj dane, pod którymi zapiszemy wizytę.</p>' +
+      '<form class="form" id="form" novalidate>' +
+      field('name', 'Imię i nazwisko', 'text', 'autocomplete="name"') +
+      '<div class="two">' + field('phone', 'Telefon', 'tel', 'autocomplete="tel" inputmode="tel" placeholder="500 100 200"') + field('email', 'E-mail', 'email', 'autocomplete="email" inputmode="email"') + '</div>' +
+      '<div class="field"><label for="f-note">Uwagi <span class="opt">(opcjonalnie)</span></label><textarea id="f-note" data-field="note" placeholder="Alergie, przyjmowane leki, pytania do specjalisty">' + esc(f.note) + '</textarea></div>' +
+      '<div><label class="consent"><input type="checkbox" id="f-consent" data-field="consent"' + (f.consent ? ' checked' : '') + '><span>Zgadzam się na przetwarzanie moich danych w celu realizacji rezerwacji i kontaktu w sprawie wizyty.</span></label><div class="err" id="e-consent" aria-live="polite">' + (state.errors.consent || '') + '</div></div>' +
+      '<div class="actions"><button type="button" class="btn ghost" data-act="back">Wstecz</button><button type="submit" class="btn">Zarezerwuj wizytę</button></div></form>';
+  }
+
+  function summaryRows() {
+    var s = byId(state.service), d = null;
+    if (state.date) { var p = state.date.split('-'); d = new Date(+p[0], +p[1] - 1, +p[2]); }
+    var row = function (l, v, ph) { return '<div><dt>' + l + '</dt><dd' + (v ? '' : ' class="ph"') + '>' + (v ? esc(v) : ph) + '</dd></div>'; };
+    return row('Wizyta', s && s.name, 'Nie wybrano') +
+      row('Data', d && dayLong(d), 'Nie wybrano') +
+      row('Godzina', s && state.time != null ? fmtT(state.time) + '–' + fmtT(state.time + s.dur) : '', 'Nie wybrano');
+  }
+
+  function renderSummary() {
+    var s = byId(state.service);
+    $('#summary').innerHTML = '<h2>Twoja wizyta</h2><dl class="rows">' + summaryRows() + '</dl>' +
+      '<div class="total"><span>Cena</span><b>' + (s ? money(s) : '—') + '</b></div>';
+  }
+
+  function panel4() {
+    var s = byId(state.service), p = state.date.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]);
+    return '<div class="ok"><h2 tabindex="-1" id="ph">Termin zarezerwowany</h2>' +
+      '<span class="code">' + state.ref + '</span>' +
+      '<p>Numer rezerwacji podaj w razie zmiany lub odwołania wizyty. Termin można odwołać do 24 godzin przed wizytą.</p>' +
+      '<dl class="rows">' +
+      '<div><dt>Wizyta</dt><dd>' + esc(s.name) + '</dd></div>' +
+      '<div><dt>Termin</dt><dd>' + esc(dayLong(d)) + ', ' + fmtT(state.time) + '–' + fmtT(state.time + s.dur) + '</dd></div>' +
+      '<div><dt>Pacjent</dt><dd>' + esc(state.form.name) + ', ' + esc(state.form.phone) + '</dd></div>' +
+      '<div><dt>Cena</dt><dd>' + money(s) + ', płatność na miejscu</dd></div></dl>' +
+      '<div><h3>Przed wizytą</h3><p>' + esc(s.prep) + '</p></div>' +
+      '<div class="actions"><button class="btn ghost" data-act="copy">' + (state.copied ? 'Skopiowano' : 'Skopiuj szczegóły') + '</button><button class="btn" data-act="reset">Umów kolejną wizytę</button></div></div>';
+  }
+
+  function render(focus) {
+    $('#layout').classList.toggle('done', state.step === 4);
+    renderSteps();
+    $('#panel').innerHTML = [null, panel1, panel2, panel3, panel4][state.step]();
+    renderSummary();
+    if (focus) {
+      var h = $('#ph'); if (h) { h.focus({ preventScroll: true }); }
+      $('.flow').scrollIntoView({ block: 'start' });
+    }
+  }
+
+  function refreshWhen() {
+    var s = byId(state.service);
+    $('#cal').innerHTML = calHTML(s.dur);
+    $('#slots').innerHTML = slotsHTML(s.dur);
+    var nx = document.querySelector('.actions [data-act="next"]'); if (nx) nx.disabled = state.time == null;
+    renderSummary();
+  }
+
+  function validate() {
+    var f = state.form, e = {};
+    if (f.name.trim().length < 3 || f.name.trim().indexOf(' ') < 0) e.name = 'Wpisz imię i nazwisko.';
+    var digits = f.phone.replace(/\D/g, '');
+    if (digits.length < 9 || digits.length > 12) e.phone = 'Wpisz numer telefonu, np. 500 100 200.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f.email.trim())) e.email = 'Wpisz poprawny adres e-mail.';
+    if (!f.consent) e.consent = 'Zgoda jest potrzebna, aby przyjąć rezerwację.';
+    state.errors = e;
+    return Object.keys(e).length === 0;
+  }
+
+  function confirmBooking() {
+    var s = byId(state.service), p = state.date.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]);
+    for (var t = state.time; t < state.time + s.dur; t += 30) booked.add(key(d) + ':' + t);
+    saveBooked();
+    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', r = '';
+    for (var i = 0; i < 5; i++) r += chars[Math.floor(Math.random() * chars.length)];
+    state.ref = 'PU-' + r;
+    state.step = 4;
+    render(true);
+  }
+
+  function copyText() {
+    var s = byId(state.service), p = state.date.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]);
+    var txt = 'Pracownia Uśmiechu\nRezerwacja ' + state.ref + '\n' + s.name + '\n' + dayLong(d) + ', ' + fmtT(state.time) + '–' + fmtT(state.time + s.dur);
+    var done = function () { state.copied = true; render(false); };
+    try { navigator.clipboard.writeText(txt).then(done, function () {}); } catch (e) {}
+  }
+
+  document.addEventListener('click', function (ev) {
+    var el = ev.target.closest('[data-act]'); if (!el || el.disabled) return;
+    var a = el.getAttribute('data-act');
+    if (a === 'cat') { state.cat = el.getAttribute('data-cat'); render(false); }
+    else if (a === 'service') {
+      var id = el.getAttribute('data-id');
+      if (state.service !== id) { state.service = id; state.date = null; state.time = null; }
+      render(false);
+    }
+    else if (a === 'next') {
+      if (state.step === 2 && state.time == null) return;
+      state.step += 1; render(true);
+    }
+    else if (a === 'back') { state.step -= 1; render(true); }
+    else if (a === 'goto') { state.step = +el.getAttribute('data-step'); render(true); }
+    else if (a === 'prev') { state.month = new Date(state.month.getFullYear(), state.month.getMonth() - 1, 1); refreshWhen(); }
+    else if (a === 'nextm') { state.month = new Date(state.month.getFullYear(), state.month.getMonth() + 1, 1); refreshWhen(); }
+    else if (a === 'day') { state.date = el.getAttribute('data-key'); state.time = null; refreshWhen(); }
+    else if (a === 'time') { state.time = +el.getAttribute('data-min'); refreshWhen(); }
+    else if (a === 'copy') { copyText(); }
+    else if (a === 'reset') {
+      state.service = null; state.date = null; state.time = null; state.step = 1; state.ref = null; state.copied = false;
+      state.errors = {}; state.form = { name: '', phone: '', email: '', note: '', consent: false };
+      render(true);
+    }
+  });
+
+  document.addEventListener('input', function (ev) {
+    var f = ev.target.getAttribute && ev.target.getAttribute('data-field'); if (!f) return;
+    state.form[f] = ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value;
+  });
+
+  document.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    if (validate()) confirmBooking();
+    else {
+      render(false);
+      var first = document.querySelector('[aria-invalid="true"]') || document.getElementById('f-consent');
+      if (first) first.focus();
+    }
+  });
+
+  render(false);
+})();
+</script>
+</body>
+</html>
